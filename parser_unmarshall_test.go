@@ -20,10 +20,6 @@ func (m *parserMock) SliceLen(structFullPath string) (length int, err error) {
 	args := m.Called(structFullPath)
 	return args.Int(0), args.Error(1)
 }
-func (m *parserMock) FieldName(structParentPath string, structParent reflect.Type, fieldT reflect.StructField) (fieldName string) {
-	args := m.Called(structParentPath, structParent, fieldT)
-	return args.String(0)
-}
 
 func TestUnmarshallStruct(t *testing.T) {
 	cases := map[string]struct {
@@ -35,8 +31,6 @@ func TestUnmarshallStruct(t *testing.T) {
 				m = &parserMock{}
 				m.On("SetValue", "Settable", mock.Anything).
 					Return(true, nil)
-				m.On("FieldName", "", mock.Anything, mock.Anything).
-					Return("")
 				return
 			}(),
 		},
@@ -45,8 +39,6 @@ func TestUnmarshallStruct(t *testing.T) {
 				m = &parserMock{}
 				m.On("SetValue", "Settable", mock.Anything).
 					Return(true, fmt.Errorf("parse error"))
-				m.On("FieldName", "", mock.Anything, mock.Anything).
-					Return("")
 				return
 			}(),
 			expectedErr: fmt.Errorf("parse error"),
@@ -86,8 +78,6 @@ func TestUnmarshallSlice(t *testing.T) {
 				m = &parserMock{}
 				m.On("SliceLen", "Strings").
 					Return(0, nil)
-				m.On("FieldName", "", mock.Anything, mock.Anything).
-					Return("")
 				return
 			}(),
 		},
@@ -98,8 +88,6 @@ func TestUnmarshallSlice(t *testing.T) {
 					Return(1, nil)
 				m.On("SetValue", "Strings[0]", mock.Anything).
 					Return(true, nil)
-				m.On("FieldName", "", mock.Anything, mock.Anything).
-					Return("")
 				return
 			}(),
 		},
@@ -108,8 +96,6 @@ func TestUnmarshallSlice(t *testing.T) {
 				m = &parserMock{}
 				m.On("SliceLen", "Strings").
 					Return(-1, fmt.Errorf("parse error"))
-				m.On("FieldName", "", mock.Anything, mock.Anything).
-					Return("")
 				return
 			}(),
 			expectedErr: fmt.Errorf("parse error"),
@@ -150,8 +136,6 @@ func TestUnmarshallStructInStruct(t *testing.T) {
 					Return(false, nil)
 				m.On("SetValue", "Thing.Value", mock.Anything).
 					Return(true, nil)
-				m.On("FieldName", mock.Anything, mock.Anything, mock.Anything).
-					Return("")
 				return
 			}(),
 		},

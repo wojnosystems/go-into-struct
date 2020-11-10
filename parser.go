@@ -54,8 +54,7 @@ func unmarshallStruct(parser Parser, structParentPath string, structRefV reflect
 // unmarshallField unmarshalls a value into a single field in a struct. Could be the root struct or a nested struct
 func unmarshallField(parser Parser, structParentPath string, fieldV reflect.Value, fieldT reflect.StructField, parentT reflect.Type) (err error) {
 	if fieldV.CanSet() {
-		fieldName := appendStructPath(structParentPath, fieldT.Name)
-		structFullPath := appendStructPath(structParentPath, fieldName)
+		structFullPath := appendStructPath(structParentPath, fieldT.Name)
 
 		if fieldT.Type.Kind() == reflect.Slice {
 			err = unmarshallSlice(parser, structFullPath, fieldV)
