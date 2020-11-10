@@ -54,7 +54,7 @@ func unmarshallStruct(parser Parser, structParentPath string, structRefV reflect
 // unmarshallField unmarshalls a value into a single field in a struct. Could be the root struct or a nested struct
 func unmarshallField(parser Parser, structParentPath string, fieldV reflect.Value, fieldT reflect.StructField, parentT reflect.Type) (err error) {
 	if fieldV.CanSet() {
-		fieldName := fieldNameOrDefault(parser, structParentPath, parentT, fieldT)
+		fieldName := appendStructPath(structParentPath, fieldT.Name)
 		structFullPath := appendStructPath(structParentPath, fieldName)
 
 		if fieldT.Type.Kind() == reflect.Slice {
@@ -83,16 +83,6 @@ func unmarshallValue(parser Parser, structFullPath string, fieldV reflect.Value,
 	if fieldT.Kind() == reflect.Struct {
 		// fall back: no value found or was not set due to lack of type support
 		err = unmarshallStruct(parser, structFullPath, fieldV, fieldT)
-	}
-	return
-}
-
-// fieldNameOrDefault attempts to read the tags to obtain an alternate name, if no tag found, defaults back to
-// using the name provided to the field when the member was defined in Go
-func fieldNameOrDefault(parser FieldNamer, structParentPath string, parentT reflect.Type, fieldT reflect.StructField) (fieldName string) {
-	fieldName = parser.FieldName(structParentPath, parentT, fieldT)
-	if len(fieldName) == 0 {
-		fieldName = fieldT.Name
 	}
 	return
 }

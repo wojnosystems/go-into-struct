@@ -2,7 +2,6 @@ package into_struct
 
 import (
 	"github.com/stretchr/testify/assert"
-	"reflect"
 	"testing"
 )
 
@@ -71,42 +70,6 @@ func Test_AppendStructPath(t *testing.T) {
 	for caseName, c := range cases {
 		t.Run(caseName, func(t *testing.T) {
 			actual := appendStructPath(c.parent, c.input)
-			assert.Equal(t, c.expected, actual)
-		})
-	}
-}
-
-type namerDefaultName struct{}
-
-func (n *namerDefaultName) FieldName(structParentPath string, structParent reflect.Type, fieldT reflect.StructField) (fieldName string) {
-	return ""
-}
-
-type namerOverrider struct{}
-
-func (n *namerOverrider) FieldName(structParentPath string, structParent reflect.Type, fieldT reflect.StructField) (fieldName string) {
-	return "override"
-}
-
-func Test_FieldNameOrDefault(t *testing.T) {
-	settableField, _ := reflect.TypeOf((*parserTestStruct)(nil)).Elem().FieldByName("Settable")
-	cases := map[string]struct {
-		namer    FieldNamer
-		expected string
-	}{
-		"default": {
-			namer:    &namerDefaultName{},
-			expected: "Settable",
-		},
-		"override parser": {
-			namer:    &namerOverrider{},
-			expected: "override",
-		},
-	}
-
-	for caseName, c := range cases {
-		t.Run(caseName, func(t *testing.T) {
-			actual := fieldNameOrDefault(c.namer, "", nil, settableField)
 			assert.Equal(t, c.expected, actual)
 		})
 	}

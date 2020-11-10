@@ -19,18 +19,7 @@ type SliceLengther interface {
 	SliceLen(structFullPath string) (length int, err error)
 }
 
-type FieldNamer interface {
-	// FieldName provides the parser the ability to specify the canonical name that a field in the destination struct may have. Tags are usually used for this purpose. For example, the field may be defined as: "Name string `tagName:"special"`" In this case, tagName's value of "special" could be used as the structFullPath name for this field.
-	// structParentPath is provided for convenience and represents the path to the struct within which the fieldT exists.
-	// structParent is the type of struct within which the fieldT exists.
-	// fieldT is the reflect.StructField representing the field being Unmarshalled.
-	// return a non-empty string with the official name of the field. If you wish to use the default name, which
-	// matches what exists in code for your struct, simply return an empty string.
-	FieldName(structParentPath string, structParent reflect.Type, fieldT reflect.StructField) (fieldName string)
-}
-
 type Parser interface {
 	ValueSetter
 	SliceLengther
-	FieldNamer
 }
