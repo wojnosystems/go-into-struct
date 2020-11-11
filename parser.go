@@ -13,17 +13,16 @@ func Unmarshall(into interface{}, parser Parser) (err error) {
 		return
 	}
 	rootVElem := rootV.Elem()
-	rootTElem := rootVElem.Type()
-	err = unmarshallStruct(parser, "", rootVElem, rootTElem)
+	err = unmarshallStruct(parser, "", rootVElem)
 	return
 }
 
 // unmarshallStruct is the internal method, which can be called recursively. This performs the heavy-lifting
-func unmarshallStruct(parser Parser, structParentPath string, structRefV reflect.Value, structRefT reflect.Type) (err error) {
+func unmarshallStruct(parser Parser, structParentPath string, structRefV reflect.Value) (err error) {
 	for i := 0; i < structRefV.NumField(); i++ {
 		fieldV := structRefV.Field(i)
-		fieldT := structRefT.Field(i)
-		err = unmarshallField(parser, structParentPath, fieldV, fieldT, structRefT)
+		fieldT := structRefV.Type().Field(i)
+		err = unmarshallField(parser, structParentPath, fieldV, fieldT)
 		if err != nil {
 			return
 		}
@@ -32,22 +31,23 @@ func unmarshallStruct(parser Parser, structParentPath string, structRefV reflect
 }
 
 // unmarshallField unmarshalls a value into a single field in a struct. Could be the root struct or a nested struct
-func unmarshallField(parser Parser, structParentPath string, fieldV reflect.Value, fieldT reflect.StructField, parentT reflect.Type) (err error) {
+func unmarshallField(parser Parser, structParentPath string, fieldV reflect.Value, fieldT reflect.StructField) (err error) {
 	if fieldV.CanSet() {
 		structFullPath := appendStructPath(&structParentPath, &fieldT.Name)
-		if fieldT.Type.Kind() == reflect.Slice {
-			err = unmarshallSlice(parser, structFullPath, fieldV)
-		} else {
-			err = unmarshallValue(parser, structFullPath, fieldV, fieldT.Type)
+		switch fieldT.Type.Kind() {
+		case reflect.Slice:
+			err = unmarshallSlice(parser, structFullPath, fieldV, fieldT)
+		default:
+			err = unmarshallValue(parser, structFullPath, fieldV, fieldT)
 		}
 	}
 	return
 }
 
 // unmarshallValue extracts a single value and sets it to a value in a struct
-func unmarshallValue(parser Parser, structFullPath string, fieldV reflect.Value, fieldT reflect.Type) (err error) {
+func unmarshallValue(parser Parser, structFullPath string, fieldV reflect.Value, fieldT reflect.StructField) (err error) {
 	var wasSet bool
-	wasSet, err = parser.SetValue(structFullPath, fieldV)
+	wasSet, err = parser.SetValue(structFullPath, fieldV, fieldT)
 	if err != nil {
 		return
 	}
@@ -55,18 +55,21 @@ func unmarshallValue(parser Parser, structFullPath string, fieldV reflect.Value,
 		// Value set, no fall-back needed
 		return
 	}
-	if fieldT.Kind() == reflect.Struct {
+	switch fieldT.Type.Kind() {
+	case reflect.Struct:
 		// fall back: no value found or was not set due to lack of type support
-		err = unmarshallStruct(parser, structFullPath, fieldV, fieldT)
+		err = unmarshallStruct(parser, structFullPath, fieldV)
+	default:
+		err = NewErrProgramming("unsupported fallback type for field: " + fieldT.PkgPath + "." + fieldT.Name + " only Struct and Slice are supported")
 	}
 	return
 }
 
 // unmarshallSlice operates on a slice of objects. It will initialize the slice, then populate all of its members
 // from the environment variables
-func unmarshallSlice(parser Parser, sliceFieldPath string, sliceValue reflect.Value) (err error) {
+func unmarshallSlice(parser Parser, sliceFieldPath string, sliceValue reflect.Value, fieldT reflect.StructField) (err error) {
 	var length int
-	length, err = parser.SliceLen(sliceFieldPath)
+	length, err = parser.SliceLen(sliceFieldPath, sliceValue, fieldT)
 	if err != nil {
 		return
 	}
@@ -76,9 +79,14 @@ func unmarshallSlice(parser Parser, sliceFieldPath string, sliceValue reflect.Va
 		sliceValue.Set(newSlice)
 		for i := 0; i < length; i++ {
 			sliceElement := newSlice.Index(i)
-			sliceElementType := sliceElement.Type()
+			sliceElementT := sliceElement.Type()
 			sliceIndexPath := appendStructIndex(&sliceFieldPath, i)
-			err = unmarshallValue(parser, sliceIndexPath, sliceElement, sliceElementType)
+			switch sliceElementT.Kind() {
+			case reflect.Struct:
+				err = unmarshallStruct(parser, sliceIndexPath, sliceElement)
+			default:
+				err = unmarshallValue(parser, sliceIndexPath, sliceElement, fieldT)
+			}
 			if err != nil {
 				return
 			}
