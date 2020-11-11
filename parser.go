@@ -2,39 +2,19 @@ package into_struct
 
 import (
 	"reflect"
-	"strconv"
 )
 
 // Unmarshall reads the environment variables and writes them to into.
 // into should be a reference to a struct
 // This method will do some basic checks on the into value, but to help developers pass in the correct values
 func Unmarshall(into interface{}, parser Parser) (err error) {
-	rootV, err := validateDestination(into)
+	rootV, err := validateInto(into)
 	if err != nil {
 		return
 	}
 	rootVElem := rootV.Elem()
 	rootTElem := rootVElem.Type()
 	err = unmarshallStruct(parser, "", rootVElem, rootTElem)
-	return
-}
-
-// validateDestination does some basic checks to help users of this class avoid common pitfalls with more helpful messages
-func validateDestination(dst interface{}) (rootV reflect.Value, err error) {
-	if dst == nil {
-		err = NewErrProgramming("'into' argument must be not be nil")
-		return
-	}
-	rootV = reflect.ValueOf(dst)
-	rootT := rootV.Type()
-	if rootT.Kind() != reflect.Ptr {
-		err = NewErrProgramming("'into' argument must be a reference")
-		return
-	}
-	if rootV.Elem().Kind() != reflect.Struct {
-		err = NewErrProgramming("'into' argument must be a struct")
-		return
-	}
 	return
 }
 
@@ -54,15 +34,11 @@ func unmarshallStruct(parser Parser, structParentPath string, structRefV reflect
 // unmarshallField unmarshalls a value into a single field in a struct. Could be the root struct or a nested struct
 func unmarshallField(parser Parser, structParentPath string, fieldV reflect.Value, fieldT reflect.StructField, parentT reflect.Type) (err error) {
 	if fieldV.CanSet() {
-		structFullPath := appendStructPath(structParentPath, fieldT.Name)
-
+		structFullPath := appendStructPath(&structParentPath, &fieldT.Name)
 		if fieldT.Type.Kind() == reflect.Slice {
 			err = unmarshallSlice(parser, structFullPath, fieldV)
 		} else {
 			err = unmarshallValue(parser, structFullPath, fieldV, fieldT.Type)
-		}
-		if err != nil {
-			return
 		}
 	}
 	return
@@ -86,14 +62,6 @@ func unmarshallValue(parser Parser, structFullPath string, fieldV reflect.Value,
 	return
 }
 
-// appendStructPath concatenates the parent path name with the current field's name
-func appendStructPath(parent string, name string) string {
-	if parent != "" {
-		return parent + "." + name
-	}
-	return name
-}
-
 // unmarshallSlice operates on a slice of objects. It will initialize the slice, then populate all of its members
 // from the environment variables
 func unmarshallSlice(parser Parser, sliceFieldPath string, sliceValue reflect.Value) (err error) {
@@ -109,8 +77,8 @@ func unmarshallSlice(parser Parser, sliceFieldPath string, sliceValue reflect.Va
 		for i := 0; i < length; i++ {
 			sliceElement := newSlice.Index(i)
 			sliceElementType := sliceElement.Type()
-			indexPath := sliceFieldPath + "[" + strconv.FormatInt(int64(i), 10) + "]"
-			err = unmarshallValue(parser, indexPath, sliceElement, sliceElementType)
+			sliceIndexPath := appendStructIndex(&sliceFieldPath, i)
+			err = unmarshallValue(parser, sliceIndexPath, sliceElement, sliceElementType)
 			if err != nil {
 				return
 			}

@@ -1,90 +1,165 @@
 package into_struct
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"testing"
 )
 
-type parserInnerTestStruct struct {
+type tStructWithField struct {
 	Value string
 }
 
-type parserTestStruct struct {
-	Settable   parserInnerTestStruct `name:"settable"`
-	unsettable parserInnerTestStruct
+type tWithSettableNestedStruct struct {
+	Settable tStructWithField `name:"settable"`
 }
 
-func Test_ValidateDestination(t *testing.T) {
-	fixture := parserTestStruct{}
+type tWithSlice struct {
+	Strings []string
+}
+
+type tWithSliceWithStruct struct {
+	Strings []tStructWithField
+}
+
+func TestUnmarshall(t *testing.T) {
 	cases := map[string]struct {
-		input    interface{}
-		expected error
+		into        interface{}
+		mock        *mockParser
+		expectedErr error
 	}{
-		"working": {
-			input: &fixture.Settable,
+		"field parsed": {
+			into: &tStructWithField{},
+			mock: func() (m *mockParser) {
+				m = &mockParser{}
+				m.On("SetValue", "Value", mock.Anything).
+					Return(true, nil)
+				return
+			}(),
 		},
-		"not a struct": {
-			input:    &fixture.Settable.Value,
-			expected: NewErrProgramming(`'into' argument must be a struct`),
+		"nested parse Settable as a value": {
+			into: &tWithSettableNestedStruct{},
+			mock: func() (m *mockParser) {
+				m = &mockParser{}
+				m.On("SetValue", "Settable", mock.Anything).
+					Return(true, nil)
+				return
+			}(),
 		},
-		"not settable: pass by value": {
-			input:    fixture.Settable,
-			expected: NewErrProgramming(`'into' argument must be a reference`),
+		"nested parse Settable as a struct": {
+			into: &tWithSettableNestedStruct{},
+			mock: func() (m *mockParser) {
+				m = &mockParser{}
+				m.On("SetValue", "Settable", mock.Anything).
+					Return(false, nil)
+				m.On("SetValue", "Settable.Value", mock.Anything).
+					Return(true, nil)
+				return
+			}(),
 		},
-		"nil": {
-			input:    nil,
-			expected: NewErrProgramming(`'into' argument must be not be nil`),
+		"nested value parse error": {
+			into: &tWithSettableNestedStruct{},
+			mock: func() (m *mockParser) {
+				m = &mockParser{}
+				m.On("SetValue", "Settable", mock.Anything).
+					Return(true, fmt.Errorf("parse error"))
+				return
+			}(),
+			expectedErr: fmt.Errorf("parse error"),
+		},
+		"slice empty": {
+			into: &tWithSlice{},
+			mock: func() (m *mockParser) {
+				m = &mockParser{}
+				m.On("SliceLen", "Strings").
+					Return(0, nil)
+				return
+			}(),
+		},
+		"slice single item": {
+			into: &tWithSlice{},
+			mock: func() (m *mockParser) {
+				m = &mockParser{}
+				m.On("SliceLen", "Strings").
+					Return(1, nil)
+				m.On("SetValue", "Strings[0]", mock.Anything).
+					Return(true, nil)
+				return
+			}(),
+		},
+		"slice multiple item": {
+			into: &tWithSlice{},
+			mock: func() (m *mockParser) {
+				m = &mockParser{}
+				m.On("SliceLen", "Strings").
+					Return(3, nil)
+				m.On("SetValue", "Strings[0]", mock.Anything).
+					Return(true, nil)
+				m.On("SetValue", "Strings[1]", mock.Anything).
+					Return(true, nil)
+				m.On("SetValue", "Strings[2]", mock.Anything).
+					Return(true, nil)
+				return
+			}(),
+		},
+		"slice index parse error": {
+			into: &tWithSlice{},
+			mock: func() (m *mockParser) {
+				m = &mockParser{}
+				m.On("SliceLen", "Strings").
+					Return(-1, fmt.Errorf("parse error"))
+				return
+			}(),
+			expectedErr: fmt.Errorf("parse error"),
+		},
+		"slice item parse error": {
+			into: &tWithSlice{},
+			mock: func() (m *mockParser) {
+				m = &mockParser{}
+				m.On("SliceLen", "Strings").
+					Return(1, nil)
+				m.On("SetValue", "Strings[0]", mock.Anything).
+					Return(false, fmt.Errorf("parse error"))
+				return
+			}(),
+			expectedErr: fmt.Errorf("parse error"),
+		},
+		"slice item parsed": {
+			into: &tWithSlice{},
+			mock: func() (m *mockParser) {
+				m = &mockParser{}
+				m.On("SliceLen", "Strings").
+					Return(1, nil)
+				m.On("SetValue", "Strings[0]", mock.Anything).
+					Return(true, nil)
+				return
+			}(),
+		},
+		"slice with struct item parsed": {
+			into: &tWithSliceWithStruct{},
+			mock: func() (m *mockParser) {
+				m = &mockParser{}
+				m.On("SliceLen", "Strings").
+					Return(1, nil)
+				m.On("SetValue", "Strings[0]", mock.Anything).
+					Return(false, nil)
+				m.On("SetValue", "Strings[0].Value", mock.Anything).
+					Return(true, nil)
+				return
+			}(),
 		},
 	}
 
 	for caseName, c := range cases {
 		t.Run(caseName, func(t *testing.T) {
-			_, err := validateDestination(c.input)
-			if c.expected != nil {
-				assert.EqualError(t, err, c.expected.Error())
-			} else {
+			err := Unmarshall(c.into, c.mock)
+			if c.expectedErr == nil {
 				assert.NoError(t, err)
+			} else {
+				assert.EqualError(t, err, c.expectedErr.Error())
 			}
+			c.mock.AssertExpectations(t)
 		})
 	}
 }
-
-func Test_AppendStructPath(t *testing.T) {
-	cases := map[string]struct {
-		input    string
-		parent   string
-		expected string
-	}{
-		"empty": {},
-		"no parent": {
-			input:    "test",
-			expected: "test",
-		},
-		"with parent": {
-			input:    "test",
-			parent:   "parent",
-			expected: "parent.test",
-		},
-	}
-
-	for caseName, c := range cases {
-		t.Run(caseName, func(t *testing.T) {
-			actual := appendStructPath(c.parent, c.input)
-			assert.Equal(t, c.expected, actual)
-		})
-	}
-}
-
-//func Test_FieldNameOrDefault(t *testing.T) {
-//	cases := map[string]struct{
-//
-//	}{
-//
-//	}
-//
-//	for caseName, c := range cases {
-//		t.Run(caseName, func(t *testing.T) {
-//
-//		})
-//	}
-//}
