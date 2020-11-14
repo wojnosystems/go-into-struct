@@ -6,6 +6,7 @@ type PathParter interface {
 	Value() reflect.Value
 	Type() reflect.Type
 	StructField() reflect.StructField
+	Name() string
 	String() string
 }
 
