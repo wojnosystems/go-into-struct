@@ -3,7 +3,6 @@ package into_struct
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"testing"
 )
 
@@ -12,7 +11,7 @@ type tStructWithField struct {
 }
 
 type tWithSettableNestedStruct struct {
-	Settable tStructWithField `name:"settable"`
+	Settable tStructWithField
 }
 
 type tWithSlice struct {
@@ -37,7 +36,8 @@ func TestUnmarshall(t *testing.T) {
 			into: &tStructWithField{},
 			mock: func() (m *mockParser) {
 				m = &mockParser{}
-				m.On("SetValue", "Value", mock.Anything, mock.Anything).
+				m.On("SetValue", "Value").
+					Once().
 					Return(true, nil)
 				return
 			}(),
@@ -46,7 +46,8 @@ func TestUnmarshall(t *testing.T) {
 			into: &tWithUnsupportedType{},
 			mock: func() (m *mockParser) {
 				m = &mockParser{}
-				m.On("SetValue", "Chan", mock.Anything, mock.Anything).
+				m.On("SetValue", "Chan").
+					Once().
 					Return(false, nil)
 				return
 			}(),
@@ -56,7 +57,7 @@ func TestUnmarshall(t *testing.T) {
 			into: &tWithSettableNestedStruct{},
 			mock: func() (m *mockParser) {
 				m = &mockParser{}
-				m.On("SetValue", "Settable", mock.Anything, mock.Anything).
+				m.On("SetValue", "Settable").
 					Return(true, nil)
 				return
 			}(),
@@ -65,9 +66,11 @@ func TestUnmarshall(t *testing.T) {
 			into: &tWithSettableNestedStruct{},
 			mock: func() (m *mockParser) {
 				m = &mockParser{}
-				m.On("SetValue", "Settable", mock.Anything, mock.Anything).
+				m.On("SetValue", "Settable").
+					Once().
 					Return(false, nil)
-				m.On("SetValue", "Settable.Value", mock.Anything, mock.Anything).
+				m.On("SetValue", "Settable.Value").
+					Once().
 					Return(true, nil)
 				return
 			}(),
@@ -76,7 +79,8 @@ func TestUnmarshall(t *testing.T) {
 			into: &tWithSettableNestedStruct{},
 			mock: func() (m *mockParser) {
 				m = &mockParser{}
-				m.On("SetValue", "Settable", mock.Anything, mock.Anything).
+				m.On("SetValue", "Settable").
+					Once().
 					Return(true, fmt.Errorf("parse error"))
 				return
 			}(),
@@ -86,7 +90,8 @@ func TestUnmarshall(t *testing.T) {
 			into: &tWithSlice{},
 			mock: func() (m *mockParser) {
 				m = &mockParser{}
-				m.On("SliceLen", "Strings", mock.Anything, mock.Anything).
+				m.On("SliceLen", "Strings").
+					Once().
 					Return(0, nil)
 				return
 			}(),
@@ -95,9 +100,11 @@ func TestUnmarshall(t *testing.T) {
 			into: &tWithSlice{},
 			mock: func() (m *mockParser) {
 				m = &mockParser{}
-				m.On("SliceLen", "Strings", mock.Anything, mock.Anything).
+				m.On("SliceLen", "Strings").
+					Once().
 					Return(1, nil)
-				m.On("SetValue", "Strings[0]", mock.Anything, mock.Anything).
+				m.On("SetValue", "Strings[0]").
+					Once().
 					Return(true, nil)
 				return
 			}(),
@@ -106,13 +113,17 @@ func TestUnmarshall(t *testing.T) {
 			into: &tWithSlice{},
 			mock: func() (m *mockParser) {
 				m = &mockParser{}
-				m.On("SliceLen", "Strings", mock.Anything, mock.Anything).
+				m.On("SliceLen", "Strings").
+					Once().
 					Return(3, nil)
-				m.On("SetValue", "Strings[0]", mock.Anything, mock.Anything).
+				m.On("SetValue", "Strings[0]").
+					Once().
 					Return(true, nil)
-				m.On("SetValue", "Strings[1]", mock.Anything, mock.Anything).
+				m.On("SetValue", "Strings[1]").
+					Once().
 					Return(true, nil)
-				m.On("SetValue", "Strings[2]", mock.Anything, mock.Anything).
+				m.On("SetValue", "Strings[2]").
+					Once().
 					Return(true, nil)
 				return
 			}(),
@@ -121,7 +132,8 @@ func TestUnmarshall(t *testing.T) {
 			into: &tWithSlice{},
 			mock: func() (m *mockParser) {
 				m = &mockParser{}
-				m.On("SliceLen", "Strings", mock.Anything, mock.Anything).
+				m.On("SliceLen", "Strings").
+					Once().
 					Return(-1, fmt.Errorf("parse error"))
 				return
 			}(),
@@ -131,9 +143,11 @@ func TestUnmarshall(t *testing.T) {
 			into: &tWithSlice{},
 			mock: func() (m *mockParser) {
 				m = &mockParser{}
-				m.On("SliceLen", "Strings", mock.Anything, mock.Anything).
+				m.On("SliceLen", "Strings").
+					Once().
 					Return(1, nil)
-				m.On("SetValue", "Strings[0]", mock.Anything, mock.Anything).
+				m.On("SetValue", "Strings[0]").
+					Once().
 					Return(false, fmt.Errorf("parse error"))
 				return
 			}(),
@@ -143,9 +157,11 @@ func TestUnmarshall(t *testing.T) {
 			into: &tWithSlice{},
 			mock: func() (m *mockParser) {
 				m = &mockParser{}
-				m.On("SliceLen", "Strings", mock.Anything, mock.Anything).
+				m.On("SliceLen", "Strings").
+					Once().
 					Return(1, nil)
-				m.On("SetValue", "Strings[0]", mock.Anything, mock.Anything).
+				m.On("SetValue", "Strings[0]").
+					Once().
 					Return(true, nil)
 				return
 			}(),
@@ -154,9 +170,11 @@ func TestUnmarshall(t *testing.T) {
 			into: &tWithSliceWithStruct{},
 			mock: func() (m *mockParser) {
 				m = &mockParser{}
-				m.On("SliceLen", "Strings", mock.Anything, mock.Anything).
+				m.On("SliceLen", "Strings").
+					Once().
 					Return(1, nil)
-				m.On("SetValue", "Strings[0].Value", mock.Anything, mock.Anything).
+				m.On("SetValue", "Strings[0]").
+					Once().
 					Return(true, nil)
 				return
 			}(),

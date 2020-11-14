@@ -15,7 +15,11 @@ You need only implement the methods in Parser for your class and pass it to the 
 
 ```go
 package main
-import into_struct "github.com/wojnosystems/go-into-struct"
+import (
+    "fmt"
+    into_struct "github.com/wojnosystems/go-into-struct"
+    "log"
+)
 type Struct2 struct {
   Struct2Value string
 }
@@ -23,9 +27,24 @@ type Top struct {
   TopValue Struct2
   Slices   Struct2
 }
+type myParser struct {
+}
+func (p *myParser) SetValue(structFullPath into_struct.Path) (handled bool, err error) {
+  fmt.Println(structFullPath.String())
+  return true, nil
+}
+func (p *myParser) SliceLen(structFullPath into_struct.Path) (length int, err error) {
+  if structFullPath.Top().String() == "Slices" {
+    return 3, nil
+  }
+  return 0, nil
+}
 func main() {
   var myTop Top
-  into_struct.Unmarshall(&myTop, myParser{})
+  err := into_struct.Unmarshall(&myTop, &myParser{})
+  if err != nil {
+    log.Panic(err)
+  }
 }
 ```
 
